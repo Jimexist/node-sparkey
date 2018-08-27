@@ -6,14 +6,14 @@
 
 namespace sparkey {
 
-class HashWorker : public NanAsyncWorker {
+class HashWorker : public Nan::AsyncWorker {
   public:
     HashWorker(
         char *log_file
       , char *hash_file
       , int hash_size
-      , NanCallback *callback
-    ) : NanAsyncWorker(callback)
+      , Nan::Callback *callback
+    ) : Nan::AsyncWorker(callback)
       , log_file(log_file)
       , hash_file(hash_file)
       , hash_size(hash_size) {}
@@ -37,8 +37,8 @@ NAN_METHOD(Hash) {
   NanScope();
   size_t logsize;
   size_t hashsize;
-  char *log_file = NanCString(args[0], &logsize);
-  char *hash_file = NanCString(args[1], &hashsize);
+  char *log_file = NanUtf8String(args[0], &logsize);
+  char *hash_file = NanUtf8String(args[1], &hashsize);
   v8::Local<v8::Function> fn;
   int hash_size = 0;
 
@@ -53,18 +53,18 @@ NAN_METHOD(Hash) {
       log_file
     , hash_file
     , hash_size
-    , new NanCallback(fn)
+    , new Nan::Callback(fn)
   );
-  NanAsyncQueueWorker(worker);
-  NanReturnUndefined();
+  AsyncQueueWorker(worker);
+  Nan::ReturnUndefined();
 }
 
 NAN_METHOD(HashSync) {
   NanScope();
   size_t logsize;
   size_t hashsize;
-  char *log_file = NanCString(args[0], &logsize);
-  char *hash_file = NanCString(args[1], &hashsize);
+  char *log_file = NanUtf8String(args[0], &logsize);
+  char *hash_file = NanUtf8String(args[1], &hashsize);
   int hash_size = 3 == args.Length()
     ? args[2]->NumberValue()
     : 0;
@@ -74,17 +74,17 @@ NAN_METHOD(HashSync) {
     , hash_size
   );
   if (SPARKEY_SUCCESS != rc) {
-    NanThrowError(sparkey_errstring(rc));
+    Nan::ThrowError(sparkey_errstring(rc));
   }
-  NanReturnUndefined();
+  ReturnUndefined();
 }
 
 void
 InitHash(v8::Handle<v8::Object> exports) {
-  exports->Set(NanSymbol("hash"), v8::FunctionTemplate::New(
+  exports->Set(Nan::Symbol("hash"), v8::FunctionTemplate::New(
     Hash)->GetFunction()
   );
-  exports->Set(NanSymbol("hashSync"), v8::FunctionTemplate::New(
+  exports->Set(Nan::Symbol("hashSync"), v8::FunctionTemplate::New(
     HashSync)->GetFunction()
   );
 }

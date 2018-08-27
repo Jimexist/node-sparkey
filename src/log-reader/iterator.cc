@@ -5,6 +5,8 @@
 #include "reader.h"
 #include "iterator.h"
 
+
+
 namespace sparkey {
 
 v8::Persistent<v8::FunctionTemplate> LogIterator::constructor;
@@ -13,13 +15,13 @@ v8::Persistent<v8::FunctionTemplate> LogIterator::constructor;
  * Skip worker.
  */
 
-class LogIteratorSkipWorker : public NanAsyncWorker {
+class LogIteratorSkipWorker : public NanNan::AsyncWorker {
   public:
     LogIteratorSkipWorker(
         LogIterator *self
       , int number
-      , NanCallback *callback
-    ) : NanAsyncWorker(callback), self(self), number(number) {}
+      , Nan::Callback *callback
+    ) : NanNan::AsyncWorker(callback), self(self), number(number) {}
 
     void
     Execute() {
@@ -43,12 +45,12 @@ class LogIteratorSkipWorker : public NanAsyncWorker {
  * Next worker.
  */
 
-class LogIteratorNextWorker : public NanAsyncWorker {
+class LogIteratorNextWorker : public NanNan::AsyncWorker {
   public:
     LogIteratorNextWorker(
         LogIterator *self
-      , NanCallback *callback
-    ) : NanAsyncWorker(callback), self(self) {
+      , Nan::Callback *callback
+    ) : NanNan::AsyncWorker(callback), self(self) {
       key = NULL;
       value = NULL;
     }
@@ -167,7 +169,7 @@ LogIterator::Init() {
     LogIterator::New
   );
   NanAssignPersistent(v8::FunctionTemplate, constructor, tpl);
-  tpl->SetClassName(NanSymbol("LogIterator"));
+  tpl->SetClassName(Nan::Symbol("LogIterator"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   NODE_SET_PROTOTYPE_METHOD(tpl, "end", End);
   NODE_SET_PROTOTYPE_METHOD(tpl, "next", Next);
@@ -185,7 +187,7 @@ NAN_METHOD(LogIterator::New) {
   self->reader = reader->reader;
   rc = sparkey_logiter_create(&self->iterator, self->reader);
   if (SPARKEY_SUCCESS != rc) {
-    NanThrowError(sparkey_errstring(rc));
+    Nan::ThrowError(sparkey_errstring(rc));
   }
   self->Wrap(args.This());
   NanReturnValue(args.This());
@@ -197,7 +199,7 @@ NAN_METHOD(LogIterator::End) {
     args.This()
   );
   sparkey_logiter_close(&self->iterator);
-  NanReturnUndefined();
+  ReturnUndefined();
 }
 
 NAN_METHOD(LogIterator::Next) {
@@ -208,10 +210,10 @@ NAN_METHOD(LogIterator::Next) {
   v8::Local<v8::Function> fn = args[0].As<v8::Function>();
   LogIteratorNextWorker *worker = new LogIteratorNextWorker(
       self
-    , new NanCallback(fn)
+    , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  NanReturnUndefined();
+  ReturnUndefined();
 }
 
 NAN_METHOD(LogIterator::Skip) {
@@ -224,10 +226,10 @@ NAN_METHOD(LogIterator::Skip) {
   LogIteratorSkipWorker *worker = new LogIteratorSkipWorker(
       self
     , number
-    , new NanCallback(fn)
+    , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  NanReturnUndefined();
+  ReturnUndefined();
 }
 
 NAN_METHOD(LogIterator::IsActive) {

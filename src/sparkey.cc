@@ -9,23 +9,22 @@
 #include "hash-reader/iterator.h"
 #include "hash.h"
 
-void
-InitSparkey(v8::Handle<v8::Object> exports) {
-  sparkey::LogWriter::Init(exports);
-  sparkey::LogReader::Init(exports);
+NAN_MODULE_INIT(InitSparkey) {
+  sparkey::LogWriter::Init(target);
+  sparkey::LogReader::Init(target);
   sparkey::LogIterator::Init();
-  sparkey::HashReader::Init(exports);
+  sparkey::HashReader::Init(target);
   sparkey::HashIterator::Init();
-  sparkey::InitHash(exports);
+  sparkey::InitHash(target);
 
-  // export iterator entry types
-  exports->Set(
-      NanSymbol("SPARKEY_ENTRY_PUT")
-    , v8::Number::New(SPARKEY_ENTRY_PUT)
+  Nan::Set(target
+    , Nan::New<v8::String>("SPARKEY_ENTRY_PUT").ToLocalChecked()
+    , Nan::New<v8::Number>(SPARKEY_ENTRY_PUT)
   );
-  exports->Set(
-      NanSymbol("SPARKEY_ENTRY_DELETE")
-    , v8::Number::New(SPARKEY_ENTRY_DELETE)
+
+  Nan::Set(target
+    , Nan::New<v8::String>("SPARKEY_ENTRY_DELETE").ToLocalChecked()
+    , Nan::New<v8::Number>(SPARKEY_ENTRY_DELETE)
   );
 }
 
