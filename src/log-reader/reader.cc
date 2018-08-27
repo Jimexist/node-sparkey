@@ -15,12 +15,12 @@ v8::Persistent<v8::FunctionTemplate> LogReader::constructor;
  * Close worker.
  */
 
-class LogReaderCloseWorker : public NanNan::AsyncWorker {
+class LogReaderCloseWorker : public Nan::AsyncWorker {
   public:
     LogReaderCloseWorker(
         LogReader *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self) {}
+    ) : Nan::AsyncWorker(callback), self(self) {}
 
     void
     Execute() {
@@ -35,12 +35,12 @@ class LogReaderCloseWorker : public NanNan::AsyncWorker {
  * Open worker.
  */
 
-class LogReaderOpenWorker : public NanNan::AsyncWorker {
+class LogReaderOpenWorker : public Nan::AsyncWorker {
   public:
     LogReaderOpenWorker(
         LogReader *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self) {}
+    ) : Nan::AsyncWorker(callback), self(self) {}
 
     void
     Execute() {
@@ -48,7 +48,7 @@ class LogReaderOpenWorker : public NanNan::AsyncWorker {
       if (SPARKEY_SUCCESS != rc) {
         // most obnixous part of NAN: they free `errmsg`, so
         // you've got to use a pointer you own :(
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -108,60 +108,60 @@ LogReader::Init(v8::Handle<v8::Object> exports) {
 }
 
 NAN_METHOD(LogReader::New) {
-  NanScope();
+
   LogReader *self = new LogReader;
   size_t pathsize;
-  self->path = NanUtf8String(args[0], &pathsize);
+  self->path = Nan::Utf8String(info.args[0], &pathsize);
   self->block_size = -1;
-  self->Wrap(args.This());
-  NanReturnValue(args.This());
+  self->Wrap(info.args.This());
+  NanReturnValue(info.args.This());
 }
 
 NAN_METHOD(LogReader::Close) {
-  NanScope();
-  LogReader *self = ObjectWrap::Unwrap<LogReader>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+
+  LogReader *self = ObjectWrap::Unwrap<LogReader>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   LogReaderCloseWorker *worker = new LogReaderCloseWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogReader::CloseSync) {
-  NanScope();
-  LogReader *self = ObjectWrap::Unwrap<LogReader>(args.This());
+
+  LogReader *self = ObjectWrap::Unwrap<LogReader>(info.args.This());
   self->CloseReader();
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogReader::Open) {
-  NanScope();
-  LogReader *self = ObjectWrap::Unwrap<LogReader>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+
+  LogReader *self = ObjectWrap::Unwrap<LogReader>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   LogReaderOpenWorker *worker = new LogReaderOpenWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogReader::OpenSync) {
-  NanScope();
-  LogReader *self = ObjectWrap::Unwrap<LogReader>(args.This());
+
+  LogReader *self = ObjectWrap::Unwrap<LogReader>(info.args.This());
   sparkey_returncode rc = self->OpenReader();
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 // TODO this should probably just be a getter function (reader.blockSize)
 NAN_METHOD(LogReader::GetBlockSize) {
-  NanScope();
-  LogReader *self = ObjectWrap::Unwrap<LogReader>(args.This());
+
+  LogReader *self = ObjectWrap::Unwrap<LogReader>(info.args.This());
   // only lookup once, as it's constant
   if (-1 == self->block_size) {
     self->block_size = sparkey_logreader_get_compression_blocksize(
@@ -172,8 +172,8 @@ NAN_METHOD(LogReader::GetBlockSize) {
 }
 
 NAN_METHOD(LogReader::NewIterator) {
-  NanScope();
-  NanReturnValue(LogIterator::NewInstance(args.This()));
+
+  NanReturnValue(LogIterator::NewInstance(info.args.This()));
 }
 
 } // namespace sparkey

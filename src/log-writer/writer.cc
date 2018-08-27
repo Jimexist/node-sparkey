@@ -14,14 +14,14 @@ v8::Persistent<v8::FunctionTemplate> LogWriter::constructor;
  * Open worker.
  */
 
-class WriterOpenWorker : public NanNan::AsyncWorker {
+class WriterOpenWorker : public Nan::AsyncWorker {
   public:
     WriterOpenWorker(
         LogWriter *self
       , int block_size
       , sparkey_compression_type compression_type
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self)
       , block_size(block_size)
       , compression_type(compression_type) {}
@@ -31,7 +31,7 @@ class WriterOpenWorker : public NanNan::AsyncWorker {
       sparkey_returncode rc;
       rc = self->OpenWriter(block_size, compression_type);
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -45,19 +45,19 @@ class WriterOpenWorker : public NanNan::AsyncWorker {
  * Append open worker.
  */
 
-class WriterAppendWorker : public NanNan::AsyncWorker {
+class WriterAppendWorker : public Nan::AsyncWorker {
   public:
     WriterAppendWorker(
         LogWriter *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self) {}
 
     void
     Execute() {
       sparkey_returncode rc = self->OpenWriterForAppending();
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -69,7 +69,7 @@ class WriterAppendWorker : public NanNan::AsyncWorker {
  * Put worker.
  */
 
-class WriterPutWorker : public NanNan::AsyncWorker {
+class WriterPutWorker : public Nan::AsyncWorker {
   public:
     WriterPutWorker(
         LogWriter *self
@@ -78,7 +78,7 @@ class WriterPutWorker : public NanNan::AsyncWorker {
       , char *value
       , size_t valuesize
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self)
       , keysize(keysize)
       , valuesize(valuesize)
@@ -93,7 +93,7 @@ class WriterPutWorker : public NanNan::AsyncWorker {
       delete value;
 
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -109,14 +109,14 @@ class WriterPutWorker : public NanNan::AsyncWorker {
  * Delete worker.
  */
 
-class WriterDeleteWorker : public NanNan::AsyncWorker {
+class WriterDeleteWorker : public Nan::AsyncWorker {
   public:
     WriterDeleteWorker(
         LogWriter *self
       , char *key
       , size_t keysize
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self)
       , keysize(keysize)
       , key(key) {}
@@ -128,7 +128,7 @@ class WriterDeleteWorker : public NanNan::AsyncWorker {
       delete key;
 
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -142,19 +142,19 @@ class WriterDeleteWorker : public NanNan::AsyncWorker {
  * Flush worker.
  */
 
-class WriterFlushWorker : public NanNan::AsyncWorker {
+class WriterFlushWorker : public Nan::AsyncWorker {
   public:
     WriterFlushWorker(
         LogWriter *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self) {}
 
     void
     Execute() {
       sparkey_returncode rc = self->FlushWriter();
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -166,19 +166,19 @@ class WriterFlushWorker : public NanNan::AsyncWorker {
  * Close worker.
  */
 
-class WriterCloseWorker : public NanNan::AsyncWorker {
+class WriterCloseWorker : public Nan::AsyncWorker {
   public:
     WriterCloseWorker(
         LogWriter *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback)
+    ) : Nan::AsyncWorker(callback)
       , self(self) {}
 
     void
     Execute() {
       sparkey_returncode rc = self->CloseWriter();
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -294,25 +294,25 @@ LogWriter::Init(v8::Handle<v8::Object> exports) {
 }
 
 NAN_METHOD(LogWriter::New) {
-  NanScope();
+
   LogWriter *self = new LogWriter;
   size_t pathsize;
-  self->path = NanUtf8String(args[0], &pathsize);
-  self->Wrap(args.This());
-  NanReturnValue(args.This());
+  self->path = Nan::Utf8String(info.args[0], &pathsize);
+  self->Wrap(info.args.This());
+  NanReturnValue(info.args.This());
 }
 
 NAN_METHOD(LogWriter::Open) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
 
   v8::Local<v8::Object> options;
   v8::Local<v8::Function> fn;
-  if (2 == args.Length()) {
-    options = v8::Local<v8::Object>::Cast(args[0]);
-    fn = args[1].As<v8::Function>();
+  if (2 == info.args.Length()) {
+    options = v8::Local<v8::Object>::Cast(info.args[0]);
+    fn = info.args[1].As<v8::Function>();
   } else {
-    fn = args[0].As<v8::Function>();
+    fn = info.args[0].As<v8::Function>();
   }
   int block_size = 10;
   if (!options.IsEmpty() && options->Has(Nan::Symbol("blockSize"))) {
@@ -333,13 +333,13 @@ NAN_METHOD(LogWriter::Open) {
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::OpenSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
-  v8::Local<v8::Object> options = v8::Local<v8::Object>::Cast(args[0]);
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
+  v8::Local<v8::Object> options = v8::Local<v8::Object>::Cast(info.args[0]);
   int block_size = 10;
   if (!options.IsEmpty() && options->Has(Nan::Symbol("blockSize"))) {
     block_size = options->Get(Nan::Symbol("blockSize"))->NumberValue();
@@ -356,39 +356,39 @@ NAN_METHOD(LogWriter::OpenSync) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::Append) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   WriterAppendWorker *worker = new WriterAppendWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::AppendSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   sparkey_returncode rc = self->OpenWriterForAppending();
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::Put) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   size_t keysize;
   size_t valuesize;
-  char *key = NanUtf8String(args[0], &keysize);
-  char *value = NanUtf8String(args[1], &valuesize);
-  v8::Local<v8::Function> fn = args[2].As<v8::Function>();
+  char *key = Nan::Utf8String(info.args[0], &keysize);
+  char *value = Nan::Utf8String(info.args[1], &valuesize);
+  v8::Local<v8::Function> fn = info.args[2].As<v8::Function>();
   WriterPutWorker *worker = new WriterPutWorker(
       self
     , key
@@ -398,16 +398,16 @@ NAN_METHOD(LogWriter::Put) {
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::PutSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   size_t keysize;
   size_t valuesize;
-  char *key = NanUtf8String(args[0], &keysize);
-  char *value = NanUtf8String(args[1], &valuesize);
+  char *key = Nan::Utf8String(info.args[0], &keysize);
+  char *value = Nan::Utf8String(info.args[1], &valuesize);
   sparkey_returncode rc = self->SetKey(keysize, key, valuesize, value);
 
   delete key;
@@ -416,15 +416,15 @@ NAN_METHOD(LogWriter::PutSync) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::Delete) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   size_t keysize;
-  char *key = NanUtf8String(args[0], &keysize);
-  v8::Local<v8::Function> fn = args[1].As<v8::Function>();
+  char *key = Nan::Utf8String(info.args[0], &keysize);
+  v8::Local<v8::Function> fn = info.args[1].As<v8::Function>();
   WriterDeleteWorker *worker = new WriterDeleteWorker(
       self
     , key
@@ -432,14 +432,14 @@ NAN_METHOD(LogWriter::Delete) {
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::DeleteSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   size_t keysize;
-  char *key = NanUtf8String(args[0], &keysize);
+  char *key = Nan::Utf8String(info.args[0], &keysize);
   sparkey_returncode rc = self->DeleteKey(keysize, key);
 
   delete key;
@@ -447,51 +447,51 @@ NAN_METHOD(LogWriter::DeleteSync) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::Flush) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   WriterFlushWorker *worker = new WriterFlushWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::FlushSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   sparkey_returncode rc = self->FlushWriter();
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::Close) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   WriterCloseWorker *worker = new WriterCloseWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogWriter::CloseSync) {
-  NanScope();
-  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(args.This());
+
+  LogWriter *self = node::ObjectWrap::Unwrap<LogWriter>(info.args.This());
   sparkey_returncode rc = self->CloseWriter();
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 } // namespace sparkey

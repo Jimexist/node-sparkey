@@ -15,13 +15,13 @@ v8::Persistent<v8::FunctionTemplate> LogIterator::constructor;
  * Skip worker.
  */
 
-class LogIteratorSkipWorker : public NanNan::AsyncWorker {
+class LogIteratorSkipWorker : public Nan::AsyncWorker {
   public:
     LogIteratorSkipWorker(
         LogIterator *self
       , int number
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self), number(number) {}
+    ) : Nan::AsyncWorker(callback), self(self), number(number) {}
 
     void
     Execute() {
@@ -31,7 +31,7 @@ class LogIteratorSkipWorker : public NanNan::AsyncWorker {
         , number
       );
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
         return;
       }
     }
@@ -45,12 +45,12 @@ class LogIteratorSkipWorker : public NanNan::AsyncWorker {
  * Next worker.
  */
 
-class LogIteratorNextWorker : public NanNan::AsyncWorker {
+class LogIteratorNextWorker : public Nan::AsyncWorker {
   public:
     LogIteratorNextWorker(
         LogIterator *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self) {
+    ) : Nan::AsyncWorker(callback), self(self) {
       key = NULL;
       value = NULL;
     }
@@ -73,7 +73,7 @@ class LogIteratorNextWorker : public NanNan::AsyncWorker {
 
       rc = sparkey_logiter_next(self->iterator, self->reader);
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
         return;
       }
 
@@ -92,7 +92,7 @@ class LogIteratorNextWorker : public NanNan::AsyncWorker {
       if (!keybuffer || !valuebuffer) {
         free(keybuffer);
         free(valuebuffer);
-        errmsg = strdup("Unable to allocate memory");
+        errmsg_ = strdup("Unable to allocate memory");
         return;
       }
 
@@ -106,7 +106,7 @@ class LogIteratorNextWorker : public NanNan::AsyncWorker {
       if (SPARKEY_SUCCESS != rc) {
         delete keybuffer;
         delete valuebuffer;
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
         return;
       }
       // TODO assert(actual_keylen == wanted_keylen)
@@ -121,7 +121,7 @@ class LogIteratorNextWorker : public NanNan::AsyncWorker {
       if (SPARKEY_SUCCESS != rc) {
         delete keybuffer;
         delete valuebuffer;
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
         return;
       }
       // TODO assert(actual_keylen == wanted_keylen)
@@ -178,9 +178,9 @@ LogIterator::Init() {
 }
 
 NAN_METHOD(LogIterator::New) {
-  NanScope();
+
   LogReader *reader = ObjectWrap::Unwrap<LogReader>(
-    args[0]->ToObject()
+    info.args[0]->ToObject()
   );
   LogIterator *self = new LogIterator;
   sparkey_returncode rc;
@@ -189,53 +189,53 @@ NAN_METHOD(LogIterator::New) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  self->Wrap(args.This());
-  NanReturnValue(args.This());
+  self->Wrap(info.args.This());
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogIterator::End) {
-  NanScope();
+
   LogIterator *self = ObjectWrap::Unwrap<LogIterator>(
-    args.This()
+    info.args.This()
   );
   sparkey_logiter_close(&self->iterator);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogIterator::Next) {
-  NanScope();
+
   LogIterator *self = ObjectWrap::Unwrap<LogIterator>(
-    args.This()
+    info.args.This()
   );
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   LogIteratorNextWorker *worker = new LogIteratorNextWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogIterator::Skip) {
-  NanScope();
+
   LogIterator *self = ObjectWrap::Unwrap<LogIterator>(
-    args.This()
+    info.args.This()
   );
-  int number = args[0]->NumberValue();
-  v8::Local<v8::Function> fn = args[1].As<v8::Function>();
+  int number = info.args[0]->NumberValue();
+  v8::Local<v8::Function> fn = info.args[1].As<v8::Function>();
   LogIteratorSkipWorker *worker = new LogIteratorSkipWorker(
       self
     , number
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(LogIterator::IsActive) {
-  NanScope();
+
   LogIterator *self = ObjectWrap::Unwrap<LogIterator>(
-    args.This()
+    info.args.This()
   );
   bool is_active = SPARKEY_ITER_ACTIVE == sparkey_logiter_state(
     self->iterator
@@ -245,7 +245,7 @@ NAN_METHOD(LogIterator::IsActive) {
 
 v8::Local<v8::Object>
 LogIterator::NewInstance(v8::Local<v8::Object> reader) {
-  NanScope();
+
   v8::Local<v8::Object> instance;
   v8::Local<v8::FunctionTemplate> c = NanPersistentToLocal(
     constructor

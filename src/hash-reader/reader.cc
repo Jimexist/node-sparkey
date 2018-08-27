@@ -15,15 +15,15 @@ v8::Persistent<v8::FunctionTemplate> HashReader::constructor;
  * Open worker.
  */
 
-class HashReaderOpenWorker : public NanNan::AsyncWorker {
+class HashReaderOpenWorker : public Nan::AsyncWorker {
   public:
     HashReaderOpenWorker(
         HashReader *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self) {}
+    ) : Nan::AsyncWorker(callback), self(self) {}
 
     void SetError(sparkey_returncode rc) {
-      errmsg = strdup(sparkey_errstring(rc));
+      errmsg_ = strdup(sparkey_errstring(rc));
     }
 
     void
@@ -42,12 +42,12 @@ class HashReaderOpenWorker : public NanNan::AsyncWorker {
  * Close worker.
  */
 
-class HashReaderCloseWorker : public NanNan::AsyncWorker {
+class HashReaderCloseWorker : public Nan::AsyncWorker {
   public:
     HashReaderCloseWorker(
         HashReader *self
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self) {}
+    ) : Nan::AsyncWorker(callback), self(self) {}
 
     void
     Execute() {
@@ -113,69 +113,62 @@ HashReader::Init(v8::Handle<v8::Object> exports) {
 }
 
 NAN_METHOD(HashReader::New) {
-  NanScope();
   HashReader *self = new HashReader;
   size_t hashsize;
   size_t logsize;
-  self->hashfile = NanUtf8String(args[0], &hashsize);
-  self->logfile = NanUtf8String(args[1], &logsize);
-  self->Wrap(args.This());
-  NanReturnValue(args.This());
+  self->hashfile = Nan::Utf8String(info.args[0], &hashsize);
+  self->logfile = Nan::Utf8String(info.args[1], &logsize);
+  self->Wrap(info.args.This());
+  NanReturnValue(info.args.This());
 }
 
 NAN_METHOD(HashReader::Open) {
-  NanScope();
-  HashReader *self = ObjectWrap::Unwrap<HashReader>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+  HashReader *self = ObjectWrap::Unwrap<HashReader>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   HashReaderOpenWorker *worker = new HashReaderOpenWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashReader::OpenSync) {
-  NanScope();
-  HashReader *self = ObjectWrap::Unwrap<HashReader>(args.This());
+  HashReader *self = ObjectWrap::Unwrap<HashReader>(info.args.This());
   sparkey_returncode rc = self->OpenReader();
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  Nan::ReturnValue();
 }
 
 NAN_METHOD(HashReader::Close) {
-  NanScope();
-  HashReader *self = ObjectWrap::Unwrap<HashReader>(args.This());
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+  HashReader *self = ObjectWrap::Unwrap<HashReader>(info.args.This());
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   HashReaderCloseWorker *worker = new HashReaderCloseWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashReader::CloseSync) {
-  NanScope();
-  HashReader *self = ObjectWrap::Unwrap<HashReader>(args.This());
+  HashReader *self = ObjectWrap::Unwrap<HashReader>(info.args.This());
   self->CloseReader();
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashReader::Count) {
-  NanScope();
-  HashReader *self = ObjectWrap::Unwrap<HashReader>(args.This());
+  HashReader *self = ObjectWrap::Unwrap<HashReader>(info.args.This());
   uint64_t count = sparkey_hash_numentries(self->hash_reader);
   NanReturnValue(v8::Number::New(count));
 }
 
 NAN_METHOD(HashReader::NewIterator) {
-  NanScope();
   NanReturnValue(
     HashIterator::NewInstance(
-      args.This()
+      info.args.This()
     )
   );
 }

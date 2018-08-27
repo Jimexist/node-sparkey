@@ -10,12 +10,12 @@ namespace sparkey {
 
 v8::Persistent<v8::FunctionTemplate> HashIterator::constructor;
 
-class HashIteratorNextWorker : public NanNan::AsyncWorker {
+class HashIteratorNextWorker : public Nan::AsyncWorker {
   public:
     HashIteratorNextWorker(
           HashIterator *self
         , Nan::Callback *callback
-      ) : NanNan::AsyncWorker(callback), self(self) {
+      ) : Nan::AsyncWorker(callback), self(self) {
       key = NULL;
       value = NULL;
     }
@@ -59,7 +59,7 @@ class HashIteratorNextWorker : public NanNan::AsyncWorker {
       if (!keybuffer || !valuebuffer) {
         free(keybuffer);
         free(valuebuffer);
-        errmsg = strdup("Unable to allocate memory");
+        errmsg_ = strdup("Unable to allocate memory");
         return;
       }
 
@@ -121,17 +121,17 @@ class HashIteratorNextWorker : public NanNan::AsyncWorker {
 
     void
     SetError(sparkey_returncode rc) {
-      errmsg = strdup(sparkey_errstring(rc));
+      errmsg_ = strdup(sparkey_errstring(rc));
     }
 };
 
-class HashIteratorGetWorker : public NanNan::AsyncWorker {
+class HashIteratorGetWorker : public Nan::AsyncWorker {
   public:
     HashIteratorGetWorker(
         HashIterator *self
       , const char *key
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self), key(key) {
+    ) : Nan::AsyncWorker(callback), self(self), key(key) {
       value = NULL;
     }
 
@@ -171,7 +171,7 @@ class HashIteratorGetWorker : public NanNan::AsyncWorker {
 
       // calloc/1 to account for trailing \0
       if (!(buffer = (uint8_t *) calloc(wanted + 1, 1))) {
-        errmsg = strdup("Unable to allocate memory");
+        errmsg_ = strdup("Unable to allocate memory");
         return;
       }
 
@@ -207,7 +207,7 @@ class HashIteratorGetWorker : public NanNan::AsyncWorker {
   private:
     void
     SetError(sparkey_returncode rc) {
-      errmsg = strdup(sparkey_errstring(rc));
+      errmsg_ = strdup(sparkey_errstring(rc));
     }
 
     HashIterator *self;
@@ -220,13 +220,13 @@ class HashIteratorGetWorker : public NanNan::AsyncWorker {
  * Skip worker.
  */
 
-class HashIteratorSkipWorker : public NanNan::AsyncWorker {
+class HashIteratorSkipWorker : public Nan::AsyncWorker {
   public:
     HashIteratorSkipWorker(
         HashIterator *self
       , int number
       , Nan::Callback *callback
-    ) : NanNan::AsyncWorker(callback), self(self), number(number) {}
+    ) : Nan::AsyncWorker(callback), self(self), number(number) {}
 
     void
     Execute() {
@@ -237,7 +237,7 @@ class HashIteratorSkipWorker : public NanNan::AsyncWorker {
           , self->reader
         );
         if (SPARKEY_SUCCESS != rc) {
-          errmsg = strdup(sparkey_errstring(rc));
+          errmsg_ = strdup(sparkey_errstring(rc));
           return;
         }
       }
@@ -270,7 +270,7 @@ HashIterator::Init() {
 
 v8::Local<v8::Object>
 HashIterator::NewInstance(v8::Local<v8::Object> reader) {
-  NanScope();
+  Scope();
   v8::Local<v8::Object> instance;
   v8::Local<v8::FunctionTemplate> c = NanPersistentToLocal(
     constructor
@@ -281,9 +281,9 @@ HashIterator::NewInstance(v8::Local<v8::Object> reader) {
 }
 
 NAN_METHOD(HashIterator::New) {
-  NanScope();
+
   HashReader *reader = ObjectWrap::Unwrap<HashReader>(
-    args[0]->ToObject()
+    info.args[0]->ToObject()
   );
   HashIterator *self = new HashIterator;
   self->reader = reader->hash_reader;
@@ -295,63 +295,63 @@ NAN_METHOD(HashIterator::New) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  self->Wrap(args.This());
-  NanReturnValue(args.This());
+  self->Wrap(info.args.This());
+  NanReturnValue(info.args.This());
 }
 
 NAN_METHOD(HashIterator::Next) {
-  NanScope();
+
   HashIterator *self = ObjectWrap::Unwrap<HashIterator>(
-    args.This()
+    info.args.This()
   );
-  v8::Local<v8::Function> fn = args[0].As<v8::Function>();
+  v8::Local<v8::Function> fn = info.args[0].As<v8::Function>();
   HashIteratorNextWorker *worker = new HashIteratorNextWorker(
       self
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashIterator::Get) {
-  NanScope();
+
   size_t keysize;
   HashIterator *self = ObjectWrap::Unwrap<HashIterator>(
-    args.This()
+    info.args.This()
   );
-  v8::Local<v8::Function> fn = args[1].As<v8::Function>();
+  v8::Local<v8::Function> fn = info.args[1].As<v8::Function>();
   HashIteratorGetWorker *worker = new HashIteratorGetWorker(
       self
-    , NanUtf8String(args[0], &keysize)
+    , Nan::Utf8String(info.args[0], &keysize)
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashIterator::Skip) {
-  NanScope();
+
   HashIterator *self = ObjectWrap::Unwrap<HashIterator>(
-    args.This()
+    info.args.This()
   );
-  int number = args[0]->NumberValue();
-  v8::Local<v8::Function> fn = args[1].As<v8::Function>();
+  int number = info.args[0]->NumberValue();
+  v8::Local<v8::Function> fn = info.args[1].As<v8::Function>();
   HashIteratorSkipWorker *worker = new HashIteratorSkipWorker(
       self
     , number
     , new Nan::Callback(fn)
   );
   NanAsyncQueueWorker(worker);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashIterator::End) {
-  NanScope();
+
   HashIterator *self = ObjectWrap::Unwrap<HashIterator>(
-    args.This()
+    info.args.This()
   );
   sparkey_logiter_close(&self->iterator);
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 

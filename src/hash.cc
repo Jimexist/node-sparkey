@@ -23,7 +23,7 @@ class HashWorker : public Nan::AsyncWorker {
       sparkey_returncode rc;
       rc = sparkey_hash_write(hash_file, log_file, hash_size);
       if (SPARKEY_SUCCESS != rc) {
-        errmsg = strdup(sparkey_errstring(rc));
+        errmsg_ = strdup(sparkey_errstring(rc));
       }
     }
 
@@ -34,19 +34,18 @@ class HashWorker : public Nan::AsyncWorker {
 };
 
 NAN_METHOD(Hash) {
-  NanScope();
   size_t logsize;
   size_t hashsize;
-  char *log_file = NanUtf8String(args[0], &logsize);
-  char *hash_file = NanUtf8String(args[1], &hashsize);
+  char *log_file = Nan::Utf8String(info.args[0], &logsize);
+  char *hash_file = Nan::Utf8String(info.args[1], &hashsize);
   v8::Local<v8::Function> fn;
   int hash_size = 0;
 
-  if (3 == args.Length()) {
-    fn = args[2].As<v8::Function>();
+  if (3 == info.args.Length()) {
+    fn = info.args[2].As<v8::Function>();
   } else {
-    hash_size = args[2]->NumberValue();
-    fn = args[3].As<v8::Function>();
+    hash_size = info.args[2]->NumberValue();
+    fn = info.args[3].As<v8::Function>();
   }
 
   HashWorker *worker = new HashWorker(
@@ -56,17 +55,16 @@ NAN_METHOD(Hash) {
     , new Nan::Callback(fn)
   );
   AsyncQueueWorker(worker);
-  Nan::ReturnUndefined();
+  Nan::info.GetReturnValue().SetUndefined();
 }
 
 NAN_METHOD(HashSync) {
-  NanScope();
   size_t logsize;
   size_t hashsize;
-  char *log_file = NanUtf8String(args[0], &logsize);
-  char *hash_file = NanUtf8String(args[1], &hashsize);
-  int hash_size = 3 == args.Length()
-    ? args[2]->NumberValue()
+  char *log_file = Nan::Utf8String(info.args[0], &logsize);
+  char *hash_file = Nan::Utf8String(info.args[1], &hashsize);
+  int hash_size = 3 == info.args.Length()
+    ? info.args[2]->NumberValue()
     : 0;
   sparkey_returncode rc = sparkey_hash_write(
       hash_file
@@ -76,7 +74,7 @@ NAN_METHOD(HashSync) {
   if (SPARKEY_SUCCESS != rc) {
     Nan::ThrowError(sparkey_errstring(rc));
   }
-  ReturnUndefined();
+  info.GetReturnValue().SetUndefined();
 }
 
 void
